@@ -1,6 +1,8 @@
 theory smt_base
   imports
     Main
+  show_typeclass
+  "HOL-Library.Monad_Syntax"
 begin
 
 datatype typeName = TypeName string
@@ -39,33 +41,7 @@ datatype 'a result = Ok 'a | Err string
 definition "is_ok x = (case x of Ok _ \<Rightarrow> True | Err _ \<Rightarrow> False)"
 definition "the_result x =  (case x of Ok r \<Rightarrow> r | Err _ \<Rightarrow> undefined)"
 
-class "show" =
-  fixes "show" :: "'a \<Rightarrow> string"
 
-definition appendR (infixl "@." 66) where
-"s @. x \<equiv> s @ show x"
-
-definition appendL (infixr ".@" 67) where
-"s .@ x \<equiv> show s @ x"
-
-
-
-fun printSep where
-"printSep s [] = ''''"
-| "printSep s [x] = show x"
-| "printSep s (x#xs) = show x @ s @ printSep s xs"
-
-
-instantiation char :: "show" begin
-definition "show_char \<equiv> (\<lambda>x::char. [x])"
-instance by standard
-end
-
-
-instantiation list :: ("show") "show" begin
-definition "show_list \<equiv> printSep ''''"
-instance by standard
-end
 
 instantiation vtype :: "show" begin
 definition "show \<equiv> (\<lambda>x::vtype. ''vtype'')"
@@ -107,10 +83,7 @@ end
 
 
 
-instantiation option :: ("show") "show" begin
-definition "show_option \<equiv> (\<lambda>x. case x of Some x \<Rightarrow> ''Some '' @. x | None \<Rightarrow> ''None'' )"
-instance by standard
-end
+
 
 instantiation result :: ("show") "show" begin
 definition "show_result \<equiv> (\<lambda>x. case x of Ok x \<Rightarrow> ''Ok '' @. x | Err e \<Rightarrow> e )"
@@ -135,7 +108,6 @@ instance by standard
 end
 
 
-value "show [1,2,3,4::int]"
 
 fun subst :: "(varName \<rightharpoonup> ctype) \<Rightarrow> vtype \<Rightarrow> ctype"  where
   "subst \<sigma> VBool = Bool"
@@ -223,63 +195,19 @@ value "check_types sig [v_a \<mapsto> CType t_array [CType t_int [], Bool]] exam
 value "check_types sig [v_a \<mapsto> CType t_array [Bool, Bool]] example1"
 
 
+definition combine_maps :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) option"  where
+"combine_maps f g \<equiv>
+  if \<forall>x\<in>dom f \<inter> dom g. f x = g x then
+    Some (f ++ g)
+  else None"
 
-
-
-
-
-
-
-
-
-
-
-lemma "check_types sig Map.empty example1 = None"
-  by eval
-
-declare check_types.simps[[simp del]]
-declare checkFuncType.simps[[simp del]]
-
-
-
-
-
-
-
-
-
-
-
-schematic_goal sig_f_get: "function_type sig f_get = ?x"
-  by (simp add: sig_def f_get_def f_set_def f_zero_def)
-schematic_goal sig_f_set: "function_type sig f_set = ?x"
-  by (simp add: sig_def f_get_def f_set_def f_zero_def)
-schematic_goal sig_f_zero: "function_type sig f_zero = ?x"
-  by (simp add: sig_def f_get_def f_set_def f_zero_def)
-
-
-lemma "check_types sig [v_a \<mapsto> CType t_array [CType t_int [], Bool]] example1 = Some Bool"
-  apply (subst example1_def)
-  apply (subst check_types.simps) 
-  apply (subst check_types.simps)
-  apply (subst sig_f_get)
-  apply (subst option.simps)
-  apply (subst functionType.simps)
-  apply (subst check_types.simps) 
-  apply (subst list.map)
- apply (subst check_types.simps) 
-
-  
-  apply simp
-  apply (subst check_types.simps) 
-  apply simp
-
-
-  by eval
-
+definition combine_signatures :: "signature \<Rightarrow> signature \<Rightarrow> signature option" where
+"combine_signatures sig1 sig2 \<equiv> do {
+    f \<leftarrow> combine_maps (function_type sig1) (function_type sig2);
+    t \<leftarrow> combine_maps (type_arity sig1) (type_arity sig2);
+    Some \<lparr>function_type = f, type_arity = t\<rparr>
+  }"
 
 
 end
 
-
-end
