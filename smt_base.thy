@@ -26,17 +26,21 @@ datatype s_term =
   | BinaryB "s_term" operator  "s_term"
   | Neg "s_term"
   | BoolConst bool
+  | If s_term s_term s_term
 
 
 record signature =
   function_type :: "constName \<rightharpoonup> functionType"
   type_arity :: "typeName \<rightharpoonup> nat"
 
-record 'u model =
-  type_members :: "vtype \<Rightarrow> 'u set"
-  interpret_func :: "constName \<Rightarrow> 'u list \<rightharpoonup> 'u" 
+
 
 datatype 'a result = Ok 'a | Err string
+
+definition bind_result :: "'a result \<Rightarrow> ('a \<Rightarrow> 'b result) \<Rightarrow> 'b result" (infixr "\<bind>result" 65) where
+"a \<bind>result f \<equiv> case a of Ok x \<Rightarrow> f x | Err e \<Rightarrow> Err e"
+
+adhoc_overloading Monad_Syntax.bind bind_result
 
 definition "is_ok x = (case x of Ok _ \<Rightarrow> True | Err _ \<Rightarrow> False)"
 definition "the_result x =  (case x of Ok r \<Rightarrow> r | Err _ \<Rightarrow> undefined)"
@@ -164,9 +168,21 @@ fun check_types :: "signature \<Rightarrow> type_env \<Rightarrow> s_term \<Righ
     | (Err e, _, _) \<Rightarrow> Err (e @  '' // in left hand side of operator'')
     | (_, _, Err e) \<Rightarrow> Err (e @  '' // in right hand side of operator''))"
 | "check_types \<Sigma> \<phi> (BoolConst _) = Ok Bool"
+| "check_types \<Sigma> \<phi> (If c t f) = do {
+      tc \<leftarrow> check_types \<Sigma> \<phi> c;
+      tt \<leftarrow> check_types \<Sigma> \<phi> t;
+      tf \<leftarrow> check_types \<Sigma> \<phi> f;
+      if tc \<noteq> Bool then
+        Err (''Condition must be of type bool but was '' @. tc)
+      else if tt \<noteq> tf then
+        Err (''Expressions in If have different types: '' @. tt @. '' and '' @. tf )
+      else
+        Ok tt
+    }"
+
 
 \<comment> \<open>Example of the type checker: Theory of arrays. \<close>
-
+(*
 definition "t_array \<equiv> TypeName ''ar''"
 definition "t_int \<equiv> TypeName ''int''"
 definition "f_set \<equiv> ConstName ''set''"
@@ -193,7 +209,7 @@ value "check_types sig [v_a \<mapsto> CType t_array [CType t_int [], Bool]] (App
 value "check_types sig [v_a \<mapsto> CType t_array [CType t_int [], Bool]] (Apply f_get [Apply f_set [Var v_a, Apply f_zero [], BoolConst True], Apply f_zero []])"
 value "check_types sig [v_a \<mapsto> CType t_array [CType t_int [], Bool]] example1"
 value "check_types sig [v_a \<mapsto> CType t_array [Bool, Bool]] example1"
-
+*)
 
 definition combine_maps :: "('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> ('a \<rightharpoonup> 'b) option"  where
 "combine_maps f g \<equiv>

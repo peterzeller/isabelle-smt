@@ -1,11 +1,12 @@
 section "SMT Theories"
 theory smt_theories
-  imports smt_base
+  imports smt_base 
+    smt_semantics
 begin
 
 record 'u smt_theory =
   t_signature :: signature
-  t_models :: "'u model set"
+  t_models :: "'u interpr set"
 
 text "It is possible to define theories with compatible signatures:"
 
@@ -19,6 +20,11 @@ definition combine_theories where
 }"
 
 text "Next, we define satisfiability with respect to a theory. "
+
+
+definition is_sat :: "'u::universe smt_theory \<Rightarrow> s_term \<Rightarrow> bool" where
+"is_sat T f \<equiv> \<forall>univ \<in> t_models T. 
+    evaluate univ f = from_bool True"
 
 
 end
