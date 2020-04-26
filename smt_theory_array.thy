@@ -1,3 +1,5 @@
+section "The Theory of Arrays"
+
 theory smt_theory_array
   imports smt_theories
 begin
@@ -8,7 +10,8 @@ definition "c_store \<equiv> ConstName ''store''"
 
 definition array_sig :: signature where
 "array_sig \<equiv> \<lparr>
-  function_type = [c_select \<mapsto> undefined, c_store  \<mapsto> undefined],
+  function_type = [c_select \<mapsto> FunctionType [VType t_array [TypeVar (VarName ''k''), TypeVar (VarName ''v'')], TypeVar (VarName ''k'')] (TypeVar (VarName ''v'')) , 
+                   c_store  \<mapsto> FunctionType [VType t_array [TypeVar (VarName ''k''), TypeVar (VarName ''v'')], TypeVar (VarName ''k''), (TypeVar (VarName ''v''))] (VType t_array [TypeVar (VarName ''k''), TypeVar (VarName ''v'')])],
   type_arity = [t_array \<mapsto> 2]
 \<rparr>"
 
