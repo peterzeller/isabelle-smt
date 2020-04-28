@@ -186,5 +186,17 @@ proof -
     using h inv_Q  by (auto simp add: correct_def)
 qed
 
+lemma rule_assert:
+  shows "\<Turnstile> {\<lambda>S. eval S c = Some (BoolVal True) \<and> Q S} Assert c {Q}"
+  by (auto simp add: correct_def)
+    (erule steps.cases, auto)+
+
+
+lemma rule_assume:
+  shows "\<Turnstile> {\<lambda>S. eval S c = Some (BoolVal True) \<longrightarrow> Q S} Assume c {Q}"
+  by (auto simp add: correct_def)
+     (erule steps.cases, auto split: option.splits val.splits bool.splits)+
+
+
 
 end
