@@ -17,6 +17,7 @@ datatype builtin =
   | Mod
   | And 
   | Or
+  | Implies
   | Not
   | Neg
   | Eq
@@ -41,7 +42,7 @@ datatype stmt =
   | Assume expr
   | Assign var expr
   | If expr stmt stmt
-  | While expr stmt
+  | While expr expr stmt
   | Seq stmt stmt
 
 
@@ -70,6 +71,7 @@ definition eval_builtin  :: "builtin \<Rightarrow> val list \<rightharpoonup> va
 | (Mod, [IntVal x,IntVal y]) \<Rightarrow> (if y = 0 then None else Some (IntVal (x mod y)))
 | (And, [BoolVal x,BoolVal y]) \<Rightarrow> Some (BoolVal (x \<and> y))
 | (Or, [BoolVal x,BoolVal y]) \<Rightarrow> Some (BoolVal (x \<or> y))
+| (Implies, [BoolVal x,BoolVal y]) \<Rightarrow> Some (BoolVal (x \<longrightarrow> y))
 | (Not, [BoolVal x]) \<Rightarrow> Some (BoolVal (\<not>x))
 | (Neg, [IntVal x]) \<Rightarrow> Some (IntVal (-x))
 | (Eq, [x, y]) \<Rightarrow> Some (BoolVal (x=y))
@@ -97,7 +99,7 @@ fun step :: "state \<Rightarrow> stmt \<Rightarrow> step_res" where
 | "step S (If c t f) = (case eval S c of Some (BoolVal True) \<Rightarrow> NonFinal S t
                                        | Some (BoolVal False) \<Rightarrow> NonFinal S f 
                                        | _ \<Rightarrow> Error)"
-| "step S (While c b) = (case eval S c of Some (BoolVal True) \<Rightarrow> NonFinal S (Seq b (While c b))
+| "step S (While c I b) = (case eval S c of Some (BoolVal True) \<Rightarrow> NonFinal S (Seq b (While c I b))
                                        | Some (BoolVal False) \<Rightarrow> Final S 
                                        | _ \<Rightarrow> Error)"
 | "step S (Seq a b) = (case step S a of Final S' \<Rightarrow> NonFinal S' b
@@ -242,16 +244,33 @@ lemma steps_big_if_False:
 lemma steps_big_while_True:
   assumes "eval S c = Some (BoolVal True)"
     and "steps S b (Some S')"
-    and "steps S' (While c b) S''"
-  shows "steps S (While c b) S''"
+    and "steps S' (While c I b) S''"
+  shows "steps S (While c I b) S''"
   using assms nonfinal steps_big_seq1 by auto
 
 lemma steps_big_while_False:
   assumes "eval S c = Some (BoolVal False)"
-  shows "steps S (While c b) (Some S)"
+  shows "steps S (While c I b) (Some S)"
   by (simp add: assms final)
 
+lemma steps_big_if_iff:
+  shows "steps S (If c t f) S'' \<longleftrightarrow> 
+  ((\<forall>b. eval S c \<noteq> Some (BoolVal b)) \<and> S'' = None
+   \<or> eval S c = Some (BoolVal True) \<and> steps S t S''
+   \<or> eval S c = Some (BoolVal False) \<and> steps S f S'' )"
+proof (rule iffI)
+  assume "steps S (stmt.If c t f) S''"
 
+  from this
+  show "(\<forall>b. eval S c \<noteq> Some (BoolVal b)) \<and> S'' = None \<or> eval S c = Some (BoolVal True) \<and> steps S t S'' \<or> eval S c = Some (BoolVal False) \<and> steps S f S''"
+    by (rule steps.cases)
+      (auto split: option.splits val.splits bool.splits)
+next
+  assume a0: "(\<forall>b. eval S c \<noteq> Some (BoolVal b)) \<and> S'' = None \<or>     eval S c = Some (BoolVal True) \<and> steps S t S'' \<or> eval S c = Some (BoolVal False) \<and> steps S f S''"
 
+  thus "steps S (stmt.If c t f) S''"
+    by (auto simp add: steps_big_if_True steps_big_if_False)
+      (smt error not_None_eq option.case_eq_if option.sel step.simps(4) val.exhaust val.simps(5))
+qed
 
 end
