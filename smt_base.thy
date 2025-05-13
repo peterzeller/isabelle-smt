@@ -7,7 +7,7 @@ begin
 
 datatype typeName = TypeName string
 datatype varName = VarName string
-datatype constName = ConstName string
+datatype constName = ConstName (constName_name:string)
 
 datatype quantifier = Forall | Exists
 
@@ -179,6 +179,7 @@ fun check_types :: "signature \<Rightarrow> type_env \<Rightarrow> s_term \<Righ
       else
         Ok tt
     }"
+
 
 
 \<comment> \<open>Example of the type checker: Theory of arrays. \<close>

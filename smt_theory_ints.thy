@@ -2,6 +2,7 @@ section "The Theory of Integers"
 
 theory smt_theory_ints
   imports smt_theories
+    num_string_convert
 begin
 
 definition "t_int \<equiv> TypeName ''int''"
@@ -19,6 +20,9 @@ definition "c_greatereq \<equiv> ConstName ''greatereq''"
 
 abbreviation "vt_int \<equiv> VType t_int []"
 
+definition "numerals s \<equiv> 
+  if is_nat_string (constName_name s) then Some (FunctionType [] vt_int) else None"
+
 definition int_sig :: signature where
 "int_sig \<equiv> \<lparr>
   function_type = [
@@ -33,11 +37,10 @@ definition int_sig :: signature where
     c_less \<mapsto> FunctionType [vt_int, vt_int] VBool,
     c_greater \<mapsto> FunctionType [vt_int, vt_int] VBool,
     c_greatereq \<mapsto> FunctionType [vt_int, vt_int] VBool
-  ],
+  ] ++ numerals,
   type_arity = [t_int \<mapsto> 0]
 \<rparr>"
 
-\<comment> \<open>TODO: add number literals\<close>
 
 
 text "Isabelles div and mod are not defined according to Boute's Euclidean definition,
@@ -84,6 +87,7 @@ definition is_int_model :: "'u::universe interpr \<Rightarrow> bool" where
   \<and> is_iso2b I t c_less (<)
   \<and> is_iso2b I t c_greatereq (\<ge>)
   \<and> is_iso2b I t c_greater (>)
+  \<and> (\<forall>c. is_nat_string c \<longrightarrow> i_evaluate_const I (ConstName c) [] = t (int (string_to_nat c)))
 "
 
 definition int_theory :: "'u::universe smt_theory" where
